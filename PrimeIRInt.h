@@ -1,5 +1,5 @@
 //******************************************************************************
-// IRremote
+// PrimeIR
 // Version 2.0.1 June, 2015
 // Copyright 2009 Ken Shirriff
 // For details, see http://arcfn.com/2009/08/multi-protocol-infrared-remote-library.html
@@ -14,8 +14,8 @@
 // Whynter A/C ARC-110WD added by Francesco Meschia
 //******************************************************************************
 
-#ifndef IRremoteint_h
-#define IRremoteint_h
+#ifndef PrimeIRint_h
+#define PrimeIRint_h
 
 //------------------------------------------------------------------------------
 // Include the right Arduino header
@@ -40,7 +40,7 @@
 //------------------------------------------------------------------------------
 // Information for the Interrupt Service Routine
 //
-#define RAWBUF  101  // Maximum length of raw duration buffer
+#define RAWBUF  1201  // Maximum length of raw duration buffer
 
 typedef
 	struct {
@@ -49,12 +49,12 @@ typedef
 		uint8_t       recvpin;         // Pin connected to IR data from detector
 		uint8_t       blinkpin;
 		uint8_t       blinkflag;       // true -> enable blinking of pin on IR processing
-		uint8_t       rawlen;          // counter of entries in rawbuf
+		unsigned int  rawlen;          // counter of entries in rawbuf
 		unsigned int  timer;           // State timer, counts 50uS ticks.
-		unsigned int  rawbuf[RAWBUF];  // raw data
+		uint8_t       rawbuf[RAWBUF];  // raw data
 		uint8_t       overflow;        // Raw buffer overflow occurred
 	}
-irparams_t;
+primeirparams_t;
 
 // ISR State-Machine : Receiver States
 #define STATE_IDLE      2
@@ -66,7 +66,7 @@ irparams_t;
 // Allow all parts of the code access to the ISR data
 // NB. The data can be changed by the ISR at any time, even mid-function
 // Therefore we declare it as "volatile" to stop the compiler/CPU caching it
-EXTERN  volatile irparams_t  irparams;
+EXTERN  volatile primeirparams_t  primeirparams;
 
 //------------------------------------------------------------------------------
 // Defines for setting and clearing register bits
@@ -95,7 +95,7 @@ EXTERN  volatile irparams_t  irparams;
 #define UTOL            (1.0 + (TOLERANCE/100.))
 
 // Minimum gap between IR transmissions
-#define _GAP            5000
+#define _GAP            0
 #define GAP_TICKS       (_GAP/USECPERTICK)
 
 #define TICKS_LOW(us)   ((int)(((us)*LTOL/USECPERTICK)))

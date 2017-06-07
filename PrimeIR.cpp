@@ -20,8 +20,8 @@
 
 // Defining IR_GLOBAL here allows us to declare the instantiation of global variables
 #define IR_GLOBAL
-#	include "IRremote.h"
-#	include "IRremoteInt.h"
+#	include "PrimeIR.h"
+#	include "PrimeIRInt.h"
 #undef IR_GLOBAL
 
 #ifndef IR_TIMER_USE_ESP32
@@ -42,7 +42,7 @@
 //   in a hope of finding out what is going on, but for now they will remain as
 //   functions even in non-DEBUG mode
 //
-int  MATCH (int measured,  int desired)
+int  PRIMEIR_MATCH (int measured,  int desired)
 {
  	DBG_PRINT(F("Testing: "));
  	DBG_PRINT(TICKS_LOW(desired), DEC);
@@ -62,7 +62,7 @@ int  MATCH (int measured,  int desired)
 //+========================================================
 // Due to sensor lag, when received, Marks tend to be 100us too long
 //
-int  MATCH_MARK (int measured_ticks,  int desired_us)
+int  PRIMEIR_MATCH_MARK (int measured_ticks,  int desired_us)
 {
 	DBG_PRINT(F("Testing mark (actual vs desired): "));
 	DBG_PRINT(measured_ticks * USECPERTICK, DEC);
@@ -88,7 +88,7 @@ int  MATCH_MARK (int measured_ticks,  int desired_us)
 //+========================================================
 // Due to sensor lag, when received, Spaces tend to be 100us too short
 //
-int  MATCH_SPACE (int measured_ticks,  int desired_us)
+int  PRIMEIR_MATCH_SPACE (int measured_ticks,  int desired_us)
 {
 	DBG_PRINT(F("Testing space (actual vs desired): "));
 	DBG_PRINT(measured_ticks * USECPERTICK, DEC);
@@ -133,68 +133,51 @@ ISR (TIMER_INTR_NAME)
 
 	// Read if IR Receiver -> SPACE [xmt LED off] or a MARK [xmt LED on]
 	// digitalRead() is very slow. Optimisation is possible, but makes the code unportable
-	uint8_t  irdata = (uint8_t)digitalRead(irparams.recvpin);
+	uint8_t  irdata = (uint8_t)digitalRead(primeirparams.recvpin);
 
-	irparams.timer++;  // One more 50uS tick
-	if (irparams.rawlen >= RAWBUF)  irparams.rcvstate = STATE_OVERFLOW ;  // Buffer overflow
+	primeirparams.timer++;  // One more 50uS tick
+	if (primeirparams.rawlen >= RAWBUF)  primeirparams.rcvstate = STATE_OVERFLOW ;  // Buffer overflow
 
-	switch(irparams.rcvstate) {
+	switch(primeirparams.rcvstate) {
 		//......................................................................
 		case STATE_IDLE: // In the middle of a gap
 			if (irdata == MARK) {
-				if (irparams.timer < GAP_TICKS)  {  // Not big enough to be a gap.
-					irparams.timer = 0;
-
-				} else {
-					// Gap just ended; Record duration; Start recording transmission
-					irparams.overflow                  = false;
-					irparams.rawlen                    = 0;
-					irparams.rawbuf[irparams.rawlen++] = irparams.timer;
-					irparams.timer                     = 0;
-					irparams.rcvstate                  = STATE_MARK;
-				}
+				// Serial.println("mark!");
+				// Gap just ended; Record duration; Start recording transmission
+				primeirparams.overflow                  = false;
+				primeirparams.rawlen                    = 0;
+				// primeirparams.rawbuf[primeirparams.rawlen++] = irdata;
+				primeirparams.timer                     = 0;
+				primeirparams.rcvstate                  = STATE_MARK;
 			}
 			break;
 		//......................................................................
 		case STATE_MARK:  // Timing Mark
-			if (irdata == SPACE) {   // Mark ended; Record time
-				irparams.rawbuf[irparams.rawlen++] = irparams.timer;
-				irparams.timer                     = 0;
-				irparams.rcvstate                  = STATE_SPACE;
-			}
+			primeirparams.rawbuf[primeirparams.rawlen++] = irdata;
 			break;
 		//......................................................................
 		case STATE_SPACE:  // Timing Space
-			if (irdata == MARK) {  // Space just ended; Record time
-				irparams.rawbuf[irparams.rawlen++] = irparams.timer;
-				irparams.timer                     = 0;
-				irparams.rcvstate                  = STATE_MARK;
-
-			} else if (irparams.timer > GAP_TICKS) {  // Space
-					// A long Space, indicates gap between codes
-					// Flag the current code as ready for processing
-					// Switch to STOP
-					// Don't reset timer; keep counting Space width
-					irparams.rcvstate = STATE_STOP;
-			}
+			// impossible
 			break;
 		//......................................................................
 		case STATE_STOP:  // Waiting; Measuring Gap
-		 	if (irdata == MARK)  irparams.timer = 0 ;  // Reset gap timer
+			// Serial.println("stop!");
+		 	// if (irdata == MARK)  primeirparams.timer = 0 ;  // Reset gap timer
 		 	break;
 		//......................................................................
 		case STATE_OVERFLOW:  // Flag up a read overflow; Stop the State Machine
-			irparams.overflow = true;
-			irparams.rcvstate = STATE_STOP;
+			// Serial.println("overflow!");
+			primeirparams.overflow = true;
+			primeirparams.rcvstate = STATE_STOP;
 		 	break;
 	}
 
 	// If requested, flash LED while receiving IR data
-	if (irparams.blinkflag) {
+	if (primeirparams.blinkflag) {
 		if (irdata == MARK)
-			if (irparams.blinkpin) digitalWrite(irparams.blinkpin, HIGH); // Turn user defined pin LED on
+			if (primeirparams.blinkpin) digitalWrite(primeirparams.blinkpin, HIGH); // Turn user defined pin LED on
 				else BLINKLED_ON() ;   // if no user defined LED pin, turn default LED pin for the hardware on
-		else if (irparams.blinkpin) digitalWrite(irparams.blinkpin, LOW); // Turn user defined pin LED on
+		else if (primeirparams.blinkpin) digitalWrite(primeirparams.blinkpin, LOW); // Turn user defined pin LED on
 				else BLINKLED_OFF() ;   // if no user defined LED pin, turn default LED pin for the hardware on
 	}
 }
